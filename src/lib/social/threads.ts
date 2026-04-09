@@ -2,6 +2,7 @@ import type {
   ThreadsShortLivedTokenResponse,
   ThreadsLongLivedTokenResponse,
   ThreadsProfile,
+  PlatformEngagement,
 } from "@/types/social";
 
 const THREADS_AUTH_URL = "https://www.threads.net/oauth/authorize";
@@ -134,4 +135,39 @@ export async function publishToThreads(
   }
 
   return publishRes.json();
+}
+
+export async function fetchThreadsEngagement(
+  accessToken: string,
+  postId: string
+): Promise<PlatformEngagement> {
+  const params = new URLSearchParams({
+    fields: "likes,replies,reposts",
+    access_token: accessToken,
+  });
+
+  const res = await fetch(`${THREADS_API_URL}/${postId}/insights?${params}`);
+
+  if (!res.ok) {
+    // Fallback: try basic fields
+    const fallbackParams = new URLSearchParams({
+      fields: "id,text",
+      access_token: accessToken,
+    });
+    const fallbackRes = await fetch(`${THREADS_API_URL}/${postId}?${fallbackParams}`);
+    if (!fallbackRes.ok) throw new Error(`Threads engagement fetch failed (${res.status})`);
+    return { likes: 0, comments: 0, reposts: 0 };
+  }
+
+  const data = await res.json();
+  const metrics = data.data ?? [];
+
+  const getValue = (name: string) =>
+    metrics.find((m: { name: string; values: { value: number }[] }) => m.name === name)?.values?.[0]?.value ?? 0;
+
+  return {
+    likes: getValue("likes"),
+    comments: getValue("replies"),
+    reposts: getValue("reposts"),
+  };
 }

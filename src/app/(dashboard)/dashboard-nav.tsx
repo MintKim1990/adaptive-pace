@@ -17,6 +17,7 @@ interface Profile {
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard" },
   { href: "/queue", label: "Queue" },
+  { href: "/analytics", label: "Analytics" },
   { href: "/settings", label: "Settings" },
 ];
 

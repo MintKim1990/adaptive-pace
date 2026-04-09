@@ -114,6 +114,23 @@ export interface PublicationWithPost extends Publication {
   posts: Post;
 }
 
+export interface AnalyticsRecord {
+  id: string;
+  publication_id: string;
+  likes: number;
+  comments: number;
+  reposts: number;
+  impressions: number | null;
+  fetched_at: string;
+}
+
+export interface PlatformEngagement {
+  likes: number;
+  comments: number;
+  reposts: number;
+  impressions?: number;
+}
+
 export interface CreatePostRequest {
   content: string;
   platforms: SocialPlatform[];

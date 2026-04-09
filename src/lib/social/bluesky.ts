@@ -1,4 +1,4 @@
-import type { BlueskySession, BlueskyProfile } from "@/types/social";
+import type { BlueskySession, BlueskyProfile, PlatformEngagement } from "@/types/social";
 
 const BSKY_API = "https://bsky.social/xrpc";
 
@@ -73,4 +73,25 @@ export async function publishToBluesky(
   }
 
   return res.json();
+}
+
+export async function fetchBlueskyEngagement(
+  accessJwt: string,
+  uri: string
+): Promise<PlatformEngagement> {
+  const res = await fetch(
+    `${BSKY_API}/app.bsky.feed.getPostThread?uri=${encodeURIComponent(uri)}&depth=0`,
+    { headers: { Authorization: `Bearer ${accessJwt}` } }
+  );
+
+  if (!res.ok) throw new Error(`Bluesky engagement fetch failed (${res.status})`);
+
+  const data = await res.json();
+  const post = data.thread?.post;
+
+  return {
+    likes: post?.likeCount ?? 0,
+    comments: post?.replyCount ?? 0,
+    reposts: post?.repostCount ?? 0,
+  };
 }

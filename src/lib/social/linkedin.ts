@@ -1,4 +1,4 @@
-import type { LinkedInTokenResponse, LinkedInProfile } from "@/types/social";
+import type { LinkedInTokenResponse, LinkedInProfile, PlatformEngagement } from "@/types/social";
 
 const LINKEDIN_AUTH_URL = "https://www.linkedin.com/oauth/v2/authorization";
 const LINKEDIN_TOKEN_URL = "https://www.linkedin.com/oauth/v2/accessToken";
@@ -84,4 +84,29 @@ export async function publishToLinkedIn(
 
   const postId = res.headers.get("x-restli-id") || "";
   return { id: postId };
+}
+
+export async function fetchLinkedInEngagement(
+  accessToken: string,
+  postUrn: string
+): Promise<PlatformEngagement> {
+  const res = await fetch(
+    `https://api.linkedin.com/v2/socialActions/${encodeURIComponent(postUrn)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "X-Restli-Protocol-Version": "2.0.0",
+      },
+    }
+  );
+
+  if (!res.ok) throw new Error(`LinkedIn engagement fetch failed (${res.status})`);
+
+  const data = await res.json();
+
+  return {
+    likes: data.likesSummary?.totalLikes ?? 0,
+    comments: data.commentsSummary?.totalFirstLevelComments ?? 0,
+    reposts: data.sharesSummary?.totalShares ?? 0,
+  };
 }
