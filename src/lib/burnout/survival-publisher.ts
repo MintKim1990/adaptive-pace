@@ -1,18 +1,37 @@
 import { createServiceClient } from "@/lib/supabase/service";
-import { publishSinglePublication, resolvePostStatus } from "@/lib/social/publisher";
+import { getStyleProfile } from "@/lib/supabase/style-profiles";
+import { rewritePost, addAiLabel } from "@/lib/llm/rewriter";
+import type { SocialPlatform } from "@/types/social";
 
-export async function publishSurvivalContent(userId: string): Promise<{ published: boolean; postId?: string }> {
-  const supabase = createServiceClient();
+interface SurvivalSettings {
+  survival_enabled: boolean;
+  survival_rewrite_mode: string;
+  survival_frequency: number;
+  survival_consent_at: string | null;
+}
 
-  // Check if we should publish today (target: 2-3 times per week)
-  // Simple logic: publish on Mon, Wed, Fri
-  const dayOfWeek = new Date().getDay();
-  const publishDays = [1, 3, 5]; // Mon, Wed, Fri
-  if (!publishDays.includes(dayOfWeek)) {
-    return { published: false };
+export async function publishSurvivalContent(
+  userId: string,
+  settings: SurvivalSettings
+): Promise<{ scheduled: boolean; postId?: string }> {
+  // Check if enabled + consent given
+  if (!settings.survival_enabled || !settings.survival_consent_at) {
+    return { scheduled: false };
   }
 
-  // Check if already published today in survival mode
+  const supabase = createServiceClient();
+
+  // Frequency check: map frequency to allowed days
+  const dayOfWeek = new Date().getDay();
+  const freq2Days = [1, 4]; // Mon, Thu
+  const freq3Days = [1, 3, 5]; // Mon, Wed, Fri
+  const allowedDays = settings.survival_frequency === 2 ? freq2Days : freq3Days;
+
+  if (!allowedDays.includes(dayOfWeek)) {
+    return { scheduled: false };
+  }
+
+  // Check if already scheduled/published today in survival mode
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const { count: todayPubs } = await supabase
@@ -23,13 +42,12 @@ export async function publishSurvivalContent(userId: string): Promise<{ publishe
     .gte("created_at", todayStart.toISOString());
 
   if ((todayPubs ?? 0) > 0) {
-    return { published: false };
+    return { scheduled: false };
   }
 
   // Find an evergreen post not recycled in last 30 days
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-  // Get IDs of recently recycled original posts
   const { data: recentRecycled } = await supabase
     .from("posts")
     .select("original_post_id")
@@ -40,7 +58,6 @@ export async function publishSurvivalContent(userId: string): Promise<{ publishe
 
   const excludeIds = (recentRecycled ?? []).map((r) => r.original_post_id).filter(Boolean);
 
-  // Find best evergreen post
   let query = supabase
     .from("posts")
     .select("id, content")
@@ -57,26 +74,10 @@ export async function publishSurvivalContent(userId: string): Promise<{ publishe
   const { data: candidates } = await query;
 
   if (!candidates?.length) {
-    return { published: false };
+    return { scheduled: false };
   }
 
   const original = candidates[0];
-
-  // Create a recycled post
-  const { data: newPost, error: postError } = await supabase
-    .from("posts")
-    .insert({
-      user_id: userId,
-      content: original.content,
-      status: "publishing",
-      original_post_id: original.id,
-    })
-    .select()
-    .single();
-
-  if (postError || !newPost) {
-    return { published: false };
-  }
 
   // Get all active social accounts
   const { data: accounts } = await supabase
@@ -86,34 +87,56 @@ export async function publishSurvivalContent(userId: string): Promise<{ publishe
     .eq("is_active", true);
 
   if (!accounts?.length) {
-    return { published: false };
+    return { scheduled: false };
   }
 
-  // Create publications for all connected platforms
+  // Prepare content based on rewrite mode
+  let content = original.content;
+
+  if (settings.survival_rewrite_mode === "rewrite") {
+    try {
+      const styleProfile = await getStyleProfile(userId);
+      // Rewrite for the first platform, use same for all (MVP simplicity)
+      const firstPlatform = accounts[0].platform as SocialPlatform;
+      content = await rewritePost(original.content, firstPlatform, styleProfile);
+      content = addAiLabel(content);
+    } catch {
+      // Fallback to original if rewrite fails
+      content = original.content;
+    }
+  }
+
+  // Schedule for tomorrow 9 AM (24 hours ahead, allows cancellation)
+  const scheduledAt = new Date();
+  scheduledAt.setDate(scheduledAt.getDate() + 1);
+  scheduledAt.setHours(9, 0, 0, 0);
+
+  // Create post as queued (not immediately published)
+  const { data: newPost } = await supabase
+    .from("posts")
+    .insert({
+      user_id: userId,
+      content,
+      status: "queued",
+      original_post_id: original.id,
+    })
+    .select()
+    .single();
+
+  if (!newPost) {
+    return { scheduled: false };
+  }
+
+  // Create publications scheduled for tomorrow
   const pubInserts = accounts.map((a) => ({
     post_id: newPost.id,
     social_account_id: a.id,
     platform: a.platform,
-    status: "publishing",
+    scheduled_at: scheduledAt.toISOString(),
+    status: "scheduled",
   }));
 
-  const { data: pubs } = await supabase
-    .from("publications")
-    .insert(pubInserts)
-    .select("*, posts(*), social_accounts(*)");
+  await supabase.from("publications").insert(pubInserts);
 
-  if (pubs) {
-    for (const pub of pubs) {
-      await publishSinglePublication(pub);
-    }
-    await resolvePostStatus(newPost.id);
-  }
-
-  // Mark as recycled
-  await supabase
-    .from("posts")
-    .update({ status: "recycled" })
-    .eq("id", newPost.id);
-
-  return { published: true, postId: newPost.id };
+  return { scheduled: true, postId: newPost.id };
 }

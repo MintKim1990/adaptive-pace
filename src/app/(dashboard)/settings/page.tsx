@@ -13,5 +13,16 @@ export default async function SettingsPage() {
 
   const socialAccounts = await getUserSocialAccounts(user.id);
 
-  return <SettingsContent socialAccounts={socialAccounts} />;
+  const { data: survivalSettings } = await supabase
+    .from("burnout_status")
+    .select("survival_enabled, survival_rewrite_mode, survival_frequency, survival_consent_at")
+    .eq("user_id", user.id)
+    .single();
+
+  return (
+    <SettingsContent
+      socialAccounts={socialAccounts}
+      survivalSettings={survivalSettings}
+    />
+  );
 }

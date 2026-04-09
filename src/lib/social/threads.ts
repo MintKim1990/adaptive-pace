@@ -171,3 +171,26 @@ export async function fetchThreadsEngagement(
     reposts: getValue("reposts"),
   };
 }
+
+export async function fetchThreadsPosts(
+  accessToken: string,
+  userId: string,
+  limit = 50
+): Promise<{ id: string; text: string; createdAt: string }[]> {
+  const params = new URLSearchParams({
+    fields: "id,text,timestamp",
+    limit: String(limit),
+    access_token: accessToken,
+  });
+
+  const res = await fetch(`${THREADS_API_URL}/${userId}/threads?${params}`);
+
+  if (!res.ok) throw new Error(`Threads posts fetch failed (${res.status})`);
+
+  const data = await res.json();
+  return (data.data ?? []).map((post: { id: string; text?: string; timestamp?: string }) => ({
+    id: post.id,
+    text: post.text ?? "",
+    createdAt: post.timestamp ?? new Date().toISOString(),
+  }));
+}

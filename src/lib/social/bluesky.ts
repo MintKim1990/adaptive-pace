@@ -95,3 +95,26 @@ export async function fetchBlueskyEngagement(
     reposts: post?.repostCount ?? 0,
   };
 }
+
+export async function fetchBlueskyAuthorFeed(
+  accessJwt: string,
+  actor: string,
+  limit = 50
+): Promise<{ uri: string; text: string; createdAt: string; likes: number; comments: number; reposts: number }[]> {
+  const res = await fetch(
+    `${BSKY_API}/app.bsky.feed.getAuthorFeed?actor=${encodeURIComponent(actor)}&limit=${limit}&filter=posts_no_replies`,
+    { headers: { Authorization: `Bearer ${accessJwt}` } }
+  );
+
+  if (!res.ok) throw new Error(`Bluesky feed fetch failed (${res.status})`);
+
+  const data = await res.json();
+  return (data.feed ?? []).map((item: { post: { uri: string; record: { text: string; createdAt: string }; likeCount?: number; replyCount?: number; repostCount?: number } }) => ({
+    uri: item.post.uri,
+    text: item.post.record?.text ?? "",
+    createdAt: item.post.record?.createdAt ?? new Date().toISOString(),
+    likes: item.post.likeCount ?? 0,
+    comments: item.post.replyCount ?? 0,
+    reposts: item.post.repostCount ?? 0,
+  }));
+}

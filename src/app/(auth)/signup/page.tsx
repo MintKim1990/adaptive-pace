@@ -15,6 +15,7 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [tosAgreed, setTosAgreed] = useState(false);
 
   async function handleSignup(e: React.FormEvent) {
     e.preventDefault();
@@ -110,11 +111,27 @@ export default function SignupPage() {
               />
             </div>
 
+            <label className="flex items-start gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={tosAgreed}
+                onChange={(e) => setTosAgreed(e.target.checked)}
+                required
+              />
+              <span>
+                I agree to the{" "}
+                <Link href="/terms" className="underline text-primary">Terms of Service</Link>
+                {" "}and{" "}
+                <Link href="/privacy" className="underline text-primary">Privacy Policy</Link>.
+              </span>
+            </label>
+
             {error && (
               <p className="text-sm text-red-500">{error}</p>
             )}
 
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading || !tosAgreed}>
               {loading ? "Creating account..." : "Create account"}
             </Button>
           </form>

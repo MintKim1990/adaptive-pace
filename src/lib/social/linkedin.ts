@@ -110,3 +110,29 @@ export async function fetchLinkedInEngagement(
     reposts: data.sharesSummary?.totalShares ?? 0,
   };
 }
+
+export async function fetchLinkedInPosts(
+  accessToken: string,
+  personUrn: string,
+  count = 50
+): Promise<{ id: string; text: string; createdAt: string }[]> {
+  const res = await fetch(
+    `https://api.linkedin.com/v2/posts?author=${encodeURIComponent(personUrn)}&q=author&count=${count}&sortBy=LAST_MODIFIED`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "X-Restli-Protocol-Version": "2.0.0",
+        "LinkedIn-Version": "202401",
+      },
+    }
+  );
+
+  if (!res.ok) throw new Error(`LinkedIn posts fetch failed (${res.status})`);
+
+  const data = await res.json();
+  return (data.elements ?? []).map((post: { id: string; commentary?: string; createdAt?: number }) => ({
+    id: post.id,
+    text: post.commentary ?? "",
+    createdAt: post.createdAt ? new Date(post.createdAt).toISOString() : new Date().toISOString(),
+  }));
+}

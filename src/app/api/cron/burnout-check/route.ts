@@ -15,20 +15,23 @@ export async function GET(request: Request) {
     const results = [];
 
     for (const userId of userIds) {
-      // Check burnout status
       const burnoutResult = await checkBurnout(userId);
 
-      // If in survival mode, try to publish evergreen content
       let survivalPublish = null;
       const supabase = createServiceClient();
       const { data: status } = await supabase
         .from("burnout_status")
-        .select("mode")
+        .select("mode, survival_enabled, survival_rewrite_mode, survival_frequency, survival_consent_at")
         .eq("user_id", userId)
         .single();
 
       if (status?.mode === "survival") {
-        survivalPublish = await publishSurvivalContent(userId);
+        survivalPublish = await publishSurvivalContent(userId, {
+          survival_enabled: status.survival_enabled ?? true,
+          survival_rewrite_mode: status.survival_rewrite_mode ?? "original",
+          survival_frequency: status.survival_frequency ?? 3,
+          survival_consent_at: status.survival_consent_at ?? null,
+        });
       }
 
       results.push({
@@ -38,10 +41,7 @@ export async function GET(request: Request) {
       });
     }
 
-    return NextResponse.json({
-      processed: userIds.length,
-      results,
-    });
+    return NextResponse.json({ processed: userIds.length, results });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Burnout check failed";
     return NextResponse.json({ error: message }, { status: 500 });
