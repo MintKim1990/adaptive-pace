@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +14,7 @@ interface Profile {
   plan: string;
 }
 
-export function DashboardContent({ user, profile }: { user: User; profile: Profile | null }) {
+export function DashboardContent({ user, profile, accountCount }: { user: User; profile: Profile | null; accountCount: number }) {
   async function handleSignOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -64,7 +65,7 @@ export function DashboardContent({ user, profile }: { user: User; profile: Profi
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">0</p>
+              <p className="text-2xl font-bold">{accountCount}</p>
             </CardContent>
           </Card>
 
@@ -88,7 +89,12 @@ export function DashboardContent({ user, profile }: { user: User; profile: Profi
             <p className="text-muted-foreground">
               Connect your social accounts to start scheduling content.
             </p>
-            <Button>Connect Social Account</Button>
+            <Link
+              href="/settings"
+              className="inline-flex h-8 items-center justify-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground transition-all hover:bg-primary/80"
+            >
+              Connect Social Account
+            </Link>
           </CardContent>
         </Card>
       </main>

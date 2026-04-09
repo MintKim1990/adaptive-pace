@@ -1,9 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { countActiveSocialAccounts } from "@/lib/supabase/social-accounts";
-import { DashboardContent } from "./dashboard-content";
+import { getUserSocialAccounts } from "@/lib/supabase/social-accounts";
+import { SettingsContent } from "./settings-content";
 
-export default async function DashboardPage() {
+export default async function SettingsPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -17,7 +17,13 @@ export default async function DashboardPage() {
     .eq("id", user.id)
     .single();
 
-  const accountCount = await countActiveSocialAccounts(user.id);
+  const socialAccounts = await getUserSocialAccounts(user.id);
 
-  return <DashboardContent user={user} profile={profile} accountCount={accountCount} />;
+  return (
+    <SettingsContent
+      user={user}
+      profile={profile}
+      socialAccounts={socialAccounts}
+    />
+  );
 }
