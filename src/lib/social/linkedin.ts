@@ -50,3 +50,38 @@ export async function getLinkedInProfile(accessToken: string): Promise<LinkedInP
   if (!res.ok) throw new Error(`Failed to fetch LinkedIn profile (${res.status})`);
   return res.json();
 }
+
+export async function publishToLinkedIn(
+  accessToken: string,
+  personUrn: string,
+  text: string
+): Promise<{ id: string }> {
+  const res = await fetch("https://api.linkedin.com/v2/posts", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+      "X-Restli-Protocol-Version": "2.0.0",
+      "LinkedIn-Version": "202401",
+    },
+    body: JSON.stringify({
+      author: personUrn,
+      commentary: text,
+      visibility: "PUBLIC",
+      distribution: {
+        feedDistribution: "MAIN_FEED",
+        targetEntities: [],
+        thirdPartyDistributionChannels: [],
+      },
+      lifecycleState: "PUBLISHED",
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`LinkedIn post failed (${res.status}): ${err}`);
+  }
+
+  const postId = res.headers.get("x-restli-id") || "";
+  return { id: postId };
+}

@@ -1,6 +1,6 @@
+import { countActiveSocialAccounts } from "@/lib/supabase/social-accounts";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { countActiveSocialAccounts } from "@/lib/supabase/social-accounts";
 import { DashboardContent } from "./dashboard-content";
 
 export default async function DashboardPage() {
@@ -13,11 +13,11 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("*")
+    .select("name")
     .eq("id", user.id)
     .single();
 
   const accountCount = await countActiveSocialAccounts(user.id);
 
-  return <DashboardContent user={user} profile={profile} accountCount={accountCount} />;
+  return <DashboardContent profileName={profile?.name ?? null} accountCount={accountCount} />;
 }

@@ -80,6 +80,53 @@ export interface BlueskyConnectRequest {
   appPassword: string;
 }
 
+// ── Post & Publication ──
+export type PostStatus = "draft" | "queued" | "publishing" | "published" | "failed" | "recycled";
+export type PublicationStatus = "scheduled" | "publishing" | "published" | "failed";
+
+export interface Post {
+  id: string;
+  user_id: string;
+  content: string;
+  media_urls: string[];
+  status: PostStatus;
+  is_evergreen: boolean;
+  engagement_score: number;
+  original_post_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Publication {
+  id: string;
+  post_id: string;
+  social_account_id: string;
+  platform: SocialPlatform;
+  platform_post_id: string | null;
+  scheduled_at: string | null;
+  published_at: string | null;
+  status: PublicationStatus;
+  error_message: string | null;
+  created_at: string;
+}
+
+export interface PublicationWithPost extends Publication {
+  posts: Post;
+}
+
+export interface CreatePostRequest {
+  content: string;
+  platforms: SocialPlatform[];
+  scheduled_at: string | null; // null = publish now
+}
+
+export const PLATFORM_CHAR_LIMITS: Record<SocialPlatform, number> = {
+  bluesky: 300,
+  threads: 500,
+  linkedin: 3000,
+};
+
+// ── API helpers ──
 export interface SocialAccountUpsert {
   user_id: string;
   platform: SocialPlatform;

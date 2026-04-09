@@ -29,8 +29,10 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 인증이 필요한 대시보드 경로 보호
-  if (!user && request.nextUrl.pathname.startsWith("/dashboard")) {
+  // 인증이 필요한 경로 보호
+  const protectedPaths = ["/dashboard", "/queue", "/settings", "/analytics"];
+  const isProtected = protectedPaths.some((p) => request.nextUrl.pathname.startsWith(p));
+  if (!user && isProtected) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
@@ -47,5 +49,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login", "/signup"],
+  matcher: ["/dashboard/:path*", "/queue/:path*", "/settings/:path*", "/analytics/:path*", "/login", "/signup"],
 };

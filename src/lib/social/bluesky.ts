@@ -44,3 +44,33 @@ export async function refreshBlueskySession(
   if (!res.ok) throw new Error(`Bluesky token refresh failed (${res.status})`);
   return res.json();
 }
+
+export async function publishToBluesky(
+  accessJwt: string,
+  did: string,
+  text: string
+): Promise<{ uri: string; cid: string }> {
+  const res = await fetch(`${BSKY_API}/com.atproto.repo.createRecord`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessJwt}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      repo: did,
+      collection: "app.bsky.feed.post",
+      record: {
+        $type: "app.bsky.feed.post",
+        text,
+        createdAt: new Date().toISOString(),
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `Bluesky post failed (${res.status})`);
+  }
+
+  return res.json();
+}

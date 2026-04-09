@@ -94,3 +94,44 @@ export async function getThreadsProfile(accessToken: string): Promise<ThreadsPro
   if (!res.ok) throw new Error(`Failed to fetch Threads profile (${res.status})`);
   return res.json();
 }
+
+export async function publishToThreads(
+  accessToken: string,
+  userId: string,
+  text: string
+): Promise<{ id: string }> {
+  // Step 1: Create media container
+  const createRes = await fetch(`${THREADS_API_URL}/${userId}/threads`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      media_type: "TEXT",
+      text,
+      access_token: accessToken,
+    }),
+  });
+
+  if (!createRes.ok) {
+    const err = await createRes.text();
+    throw new Error(`Threads container creation failed (${createRes.status}): ${err}`);
+  }
+
+  const { id: creationId } = await createRes.json();
+
+  // Step 2: Publish the container
+  const publishRes = await fetch(`${THREADS_API_URL}/${userId}/threads_publish`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      creation_id: creationId,
+      access_token: accessToken,
+    }),
+  });
+
+  if (!publishRes.ok) {
+    const err = await publishRes.text();
+    throw new Error(`Threads publish failed (${publishRes.status}): ${err}`);
+  }
+
+  return publishRes.json();
+}
