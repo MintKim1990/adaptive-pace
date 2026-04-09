@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/fetch-analytics",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/burnout-check",
+      "schedule": "0 3 * * *"
     }
   ]
 }

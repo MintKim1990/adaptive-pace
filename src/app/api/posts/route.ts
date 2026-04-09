@@ -5,6 +5,7 @@ import { createPublications } from "@/lib/supabase/publications";
 import { getUserSocialAccounts } from "@/lib/supabase/social-accounts";
 import { publishSinglePublication, resolvePostStatus } from "@/lib/social/publisher";
 import { getScheduledPublicationsForCron } from "@/lib/supabase/publications";
+import { setModeService } from "@/lib/supabase/burnout";
 import type { CreatePostRequest, PostStatus, SocialPlatform, PLATFORM_CHAR_LIMITS } from "@/types/social";
 
 export async function POST(request: Request) {
@@ -43,6 +44,9 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Auto-recover from Survival Mode when user creates a new post
+    await setModeService(user.id, "active");
+
     const post = await createPost(user.id, content.trim());
 
     for (const platform of platforms) {

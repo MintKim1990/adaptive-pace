@@ -114,6 +114,21 @@ export interface PublicationWithPost extends Publication {
   posts: Post;
 }
 
+// ── Burnout ──
+export type BurnoutMode = "active" | "survival" | "paused";
+
+export interface BurnoutStatus {
+  id: string;
+  user_id: string;
+  mode: BurnoutMode;
+  last_active_post_at: string | null;
+  survival_entered_at: string | null;
+  posts_in_last_14d: number;
+  avg_posts_30d: number;
+  updated_at: string;
+}
+
+// ── Analytics ──
 export interface AnalyticsRecord {
   id: string;
   publication_id: string;
